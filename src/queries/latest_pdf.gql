@@ -1,0 +1,14 @@
+query latestPdf {
+  allFiles(last:1, filter: {
+    contentType: "application/pdf"
+  }) {
+    id
+    contentType
+    createdAt
+    name
+    secret
+    size
+    updatedAt
+    url
+  }
+}

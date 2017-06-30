@@ -30,6 +30,7 @@ import { NotFound, Redirect } from 'kit/lib/routing';
 
 // GraphQL queries
 import allMessages from 'src/queries/all_messages.gql';
+import latestPdf from 'src/queries/latest_pdf.gql';
 
 // Styles
 import './styles.global.css';
@@ -45,7 +46,7 @@ import logo from './reactql-logo.svg';
 
 // We'll display this <Home> component when we're on the / route
 const Home = () => (
-  <h1>You&apos;re on the home page - click another link above</h1>
+  <LatestPDF />
 );
 
 // Helper component that will be conditionally shown when the route matches.
@@ -88,6 +89,75 @@ const Stats = () => {
 };
 
 // Now, let's create a GraphQL-enabled component...
+import {FILES} from 'config/project'
+import Dropzone from 'react-dropzone'
+import PDFViewer from 'src/PDFViewer'
+
+@graphql(latestPdf)
+class LatestPDF extends React.Component
+{
+  state = {uploading: false, hasFile: false}
+  onDrop(files)
+  {
+    // prepare form data, use data key!
+    let data = new FormData()
+    data.append('data', files[0])
+
+    // use the file endpoint
+    fetch(FILES.uri, {
+      method: 'POST',
+      body: data
+    }).then(response => {
+      return response.json()
+    }).then(file => {
+      this.setState({
+        uploading: false,
+        hasFile: true
+      })
+      this.props.data.refetch()
+    })
+  }
+  render()
+  {
+    const {data: {loading, refetch, allFiles}} = this.props
+    if(loading) return <h2>Loading Latest PDF...</h2>
+    const {url, name} = allFiles[0]
+    return (
+      <div>
+        {!this.state.hasFile &&
+          <div>
+            <div>
+              <Dropzone
+                onDrop={this.onDrop.bind(this)}
+                multiple={false}
+                style={{backgroundColor: '#eee', width: '100%', height: 200, padding: 30, border: '4px dotted #444', cursor: 'pointer'}}
+                activeStyle={{backgroundColor: '#99FF99', width: '100%', height: 200, padding: 30, border: '4px dotted #444', cursor: 'pointer'}}
+                onDropAccepted={() => {this.setState({uploading: true})}}
+                >
+                <div>
+                  {this.state.uploading ? (
+                    <div>Uploading File...</div>
+                  ) : (
+                    <div>Drop an image or click to choose</div>
+                  )}
+                </div>
+              </Dropzone>
+            </div>
+          </div>
+        }
+        {url ? (
+          <div>
+            <h2>PDF: {name}</h2>
+            <PDFViewer url={url}/>
+          </div>
+        ) : (
+          <h2>No PDFs</h2>
+        )}
+      </div>
+    )
+  }
+}
+
 
 // ... then, let's create the component and decorate it with the `graphql`
 // HOC that will automatically populate `this.props` with the query data
@@ -111,7 +181,6 @@ class GraphQLMessage extends React.PureComponent {
     return (
       <div>
         <h2>Message from GraphQL server: <em>{message}</em></h2>
-        <h2>Currently loading?: {isLoading}</h2>
       </div>
     );
   }
@@ -172,26 +241,11 @@ export default () => (
     <hr />
     <GraphQLMessage />
     <hr />
-    <ul>
-      <li><Link to="/">Home</Link></li>
-      <li><Link to="/page/about">About</Link></li>
-      <li><Link to="/page/contact">Contact</Link></li>
-      <li><Link to="/old/path">Redirect from /old/path &#8594; /new/path</Link></li>
-    </ul>
-    <hr />
     <Switch>
       <Route exact path="/" component={Home} />
       <Route path="/page/:name" component={Page} />
       <Redirect from="/old/path" to="/new/path" />
       <Route component={WhenNotFound} />
     </Switch>
-    <hr />
-    <ReduxCounter />
-    <hr />
-    <p>Runtime info:</p>
-    <Stats />
-    <hr />
-    <p>Stylesheet examples:</p>
-    <Styles />
   </div>
 );
